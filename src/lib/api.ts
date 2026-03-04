@@ -91,6 +91,10 @@ type ApiErrorPayload = {
   error?: {
     code?: string;
     message?: string;
+    details?: {
+      formErrors?: string[];
+      fieldErrors?: Record<string, string[]>;
+    };
   };
 };
 
@@ -107,7 +111,23 @@ const buildHeaders = (token?: string): HeadersInit => {
 const parseApiError = async (response: Response): Promise<string> => {
   try {
     const payload = (await response.json()) as ApiErrorPayload;
-    return payload.error?.message || `Request failed with status ${response.status}`;
+    const fallbackMessage = payload.error?.message || `Request failed with status ${response.status}`;
+    const details = payload.error?.details;
+
+    if (!details) {
+      return fallbackMessage;
+    }
+
+    const formErrors = details.formErrors?.filter(Boolean) ?? [];
+    const fieldErrors = Object.entries(details.fieldErrors ?? {})
+      .flatMap(([field, messages]) => (messages || []).filter(Boolean).map((message) => `${field}: ${message}`));
+
+    const combined = [...formErrors, ...fieldErrors];
+    if (combined.length === 0) {
+      return fallbackMessage;
+    }
+
+    return combined.join(" | ");
   } catch {
     return `Request failed with status ${response.status}`;
   }
@@ -119,6 +139,24 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
     throw new Error(await parseApiError(response));
   }
   return (await response.json()) as T;
+};
+
+type JwtPayload = {
+  exp?: number;
+};
+
+const parseJwtPayload = (token: string): JwtPayload | null => {
+  try {
+    const payloadBase64 = token.split(".")[1];
+    if (!payloadBase64) {
+      return null;
+    }
+    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized);
+    return JSON.parse(decoded) as JwtPayload;
+  } catch {
+    return null;
+  }
 };
 
 export const api = {
@@ -166,6 +204,30 @@ export const api = {
 
 export const authStorage = {
   getToken: () => localStorage.getItem("stock_drop_token"),
-  setToken: (token: string) => localStorage.setItem("stock_drop_token", token),
-  clearToken: () => localStorage.removeItem("stock_drop_token"),
+  setToken: (token: string) => {
+    localStorage.setItem("stock_drop_token", token);
+    window.dispatchEvent(new Event("auth-token-changed"));
+  },
+  clearToken: () => {
+    localStorage.removeItem("stock_drop_token");
+    window.dispatchEvent(new Event("auth-token-changed"));
+  },
+  getTokenExpiryMs: () => {
+    const token = localStorage.getItem("stock_drop_token");
+    if (!token) {
+      return null;
+    }
+    const payload = parseJwtPayload(token);
+    if (!payload?.exp) {
+      return null;
+    }
+    return payload.exp * 1000;
+  },
+  isTokenExpired: () => {
+    const expiryMs = authStorage.getTokenExpiryMs();
+    if (!expiryMs) {
+      return true;
+    }
+    return Date.now() >= expiryMs;
+  },
 };
