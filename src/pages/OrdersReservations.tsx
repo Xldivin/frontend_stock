@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Loader2, LogOut, RefreshCw, Zap } from "lucide-react";
-import { api, authStorage, Order, Reservation } from "../lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, RefreshCw, Zap } from "lucide-react";
+import { api, Order, Reservation } from "../lib/api";
 import { Button } from "../components/ui/button";
 
 const ORDERS_QUERY = new URLSearchParams({
@@ -20,9 +19,6 @@ const RESERVATIONS_QUERY = new URLSearchParams({
 });
 
 const OrdersReservations = () => {
-  const navigate = useNavigate();
-  const token = useMemo(() => authStorage.getToken(), []);
-
   const [orders, setOrders] = useState<Order[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,11 +27,6 @@ const OrdersReservations = () => {
 
   const fetchData = useCallback(
     async (showLoader: boolean) => {
-      if (!token) {
-        navigate("/auth");
-        return;
-      }
-
       setPageError(null);
       if (showLoader) {
         setIsLoading(true);
@@ -45,8 +36,8 @@ const OrdersReservations = () => {
 
       try {
         const [ordersResponse, reservationsResponse] = await Promise.all([
-          api.listOrders(token, ORDERS_QUERY),
-          api.listReservations(token, RESERVATIONS_QUERY),
+          api.listOrders(ORDERS_QUERY),
+          api.listReservations(RESERVATIONS_QUERY),
         ]);
 
         setOrders(ordersResponse.items);
@@ -61,17 +52,12 @@ const OrdersReservations = () => {
         }
       }
     },
-    [navigate, token],
+    [],
   );
 
   useEffect(() => {
     void fetchData(true);
   }, [fetchData]);
-
-  const handleLogout = () => {
-    authStorage.clearToken();
-    navigate("/auth");
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,10 +71,6 @@ const OrdersReservations = () => {
             <Button variant="outline" onClick={() => void fetchData(false)} disabled={isRefreshing}>
               {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Refresh
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
             </Button>
           </div>
         </div>
@@ -108,7 +90,7 @@ const OrdersReservations = () => {
         ) : (
           <>
             <section className="rounded-lg border bg-card p-5">
-              <h2 className="mb-4 text-xl font-semibold">My Active + Historical Reservations</h2>
+              <h2 className="mb-4 text-xl font-semibold">Active + Historical Reservations</h2>
               {reservations.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No reservations found.</p>
               ) : (
@@ -130,7 +112,7 @@ const OrdersReservations = () => {
             </section>
 
             <section className="rounded-lg border bg-card p-5">
-              <h2 className="mb-4 text-xl font-semibold">My Orders</h2>
+              <h2 className="mb-4 text-xl font-semibold">Orders</h2>
               {orders.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No orders found.</p>
               ) : (

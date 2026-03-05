@@ -84,18 +84,20 @@ const ProductCard = ({
           </div>
         )}
 
-        {isReserved ? (
-          <Button onClick={() => onCheckout(product.id)} disabled={checkingOut} className="h-12 w-full">
-            {checkingOut ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <>
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Checkout
-              </>
-            )}
-          </Button>
-        ) : (
+        <div className="space-y-2">
+          {isReserved && (
+            <Button onClick={() => onCheckout(product.id)} disabled={checkingOut} className="h-12 w-full">
+              {checkingOut ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  Checkout
+                </>
+              )}
+            </Button>
+          )}
+
           <Button
             onClick={() => onReserve(product.id)}
             disabled={isSoldOut || reserving}
@@ -109,7 +111,7 @@ const ProductCard = ({
               "Reserve Now"
             )}
           </Button>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -1,14 +1,5 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "http://localhost:4000/api";
 
-export type AuthResponse = {
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  };
-};
-
 export type Product = {
   id: string;
   sku: string;
@@ -98,15 +89,9 @@ type ApiErrorPayload = {
   };
 };
 
-const buildHeaders = (token?: string): HeadersInit => {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-};
+const buildHeaders = (): HeadersInit => ({
+  "Content-Type": "application/json",
+});
 
 const parseApiError = async (response: Response): Promise<string> => {
   try {
@@ -141,93 +126,31 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   return (await response.json()) as T;
 };
 
-type JwtPayload = {
-  exp?: number;
-};
-
-const parseJwtPayload = (token: string): JwtPayload | null => {
-  try {
-    const payloadBase64 = token.split(".")[1];
-    if (!payloadBase64) {
-      return null;
-    }
-    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(normalized);
-    return JSON.parse(decoded) as JwtPayload;
-  } catch {
-    return null;
-  }
-};
-
 export const api = {
-  register: (payload: { name: string; email: string; password: string }) =>
-    request<AuthResponse>("/auth/register", {
-      method: "POST",
-      headers: buildHeaders(),
-      body: JSON.stringify(payload),
-    }),
-
-  login: (payload: { email: string; password: string }) =>
-    request<AuthResponse>("/auth/login", {
-      method: "POST",
-      headers: buildHeaders(),
-      body: JSON.stringify(payload),
-    }),
-
   listProducts: (params?: URLSearchParams) =>
     request<ListProductsResponse>(`/products${params ? `?${params.toString()}` : ""}`),
 
-  reserve: (token: string, payload: { productId: string; quantity: number }) =>
+  reserve: (payload: { productId: string; quantity: number }) =>
     request<ReserveResponse>("/reserve", {
       method: "POST",
-      headers: buildHeaders(token),
+      headers: buildHeaders(),
       body: JSON.stringify(payload),
     }),
 
-  checkout: (token: string, payload: { reservationId: string }) =>
+  checkout: (payload: { reservationId: string }) =>
     request<CheckoutResponse>("/checkout", {
       method: "POST",
-      headers: buildHeaders(token),
+      headers: buildHeaders(),
       body: JSON.stringify(payload),
     }),
 
-  listReservations: (token: string, params?: URLSearchParams) =>
+  listReservations: (params?: URLSearchParams) =>
     request<ListReservationsResponse>(`/reservations${params ? `?${params.toString()}` : ""}`, {
-      headers: buildHeaders(token),
+      headers: buildHeaders(),
     }),
 
-  listOrders: (token: string, params?: URLSearchParams) =>
+  listOrders: (params?: URLSearchParams) =>
     request<ListOrdersResponse>(`/orders${params ? `?${params.toString()}` : ""}`, {
-      headers: buildHeaders(token),
+      headers: buildHeaders(),
     }),
-};
-
-export const authStorage = {
-  getToken: () => localStorage.getItem("stock_drop_token"),
-  setToken: (token: string) => {
-    localStorage.setItem("stock_drop_token", token);
-    window.dispatchEvent(new Event("auth-token-changed"));
-  },
-  clearToken: () => {
-    localStorage.removeItem("stock_drop_token");
-    window.dispatchEvent(new Event("auth-token-changed"));
-  },
-  getTokenExpiryMs: () => {
-    const token = localStorage.getItem("stock_drop_token");
-    if (!token) {
-      return null;
-    }
-    const payload = parseJwtPayload(token);
-    if (!payload?.exp) {
-      return null;
-    }
-    return payload.exp * 1000;
-  },
-  isTokenExpired: () => {
-    const expiryMs = authStorage.getTokenExpiryMs();
-    if (!expiryMs) {
-      return true;
-    }
-    return Date.now() >= expiryMs;
-  },
 };

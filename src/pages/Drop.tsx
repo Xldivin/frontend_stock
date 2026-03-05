@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, LogOut, Zap } from "lucide-react";
+import { Loader2, Zap } from "lucide-react";
 import ProductCard from "../components/ProductCard";
-import { api, authStorage, Product, Reservation } from "../lib/api";
+import { api, Product, Reservation } from "../lib/api";
 import { Button } from "../components/ui/button";
 
 type ReservationState = {
@@ -34,8 +34,6 @@ const Drop = () => {
   const [checkingOutProductId, setCheckingOutProductId] = useState<string | null>(null);
   const [reservations, setReservations] = useState<Record<string, ReservationState>>({});
 
-  const token = useMemo(() => authStorage.getToken(), []);
-
   const fetchProducts = useCallback(
     async (showLoader = false) => {
       if (showLoader) {
@@ -51,11 +49,7 @@ const Drop = () => {
   );
 
   const fetchReservations = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
-    const response = await api.listReservations(token, RESERVATIONS_QUERY);
+    const response = await api.listReservations(RESERVATIONS_QUERY);
     const nextReservations: Record<string, ReservationState> = {};
 
     response.items
@@ -70,7 +64,7 @@ const Drop = () => {
       });
 
     setReservations(nextReservations);
-  }, [token]);
+  }, []);
 
   const refreshAll = useCallback(
     async (showLoader = false) => {
@@ -88,34 +82,22 @@ const Drop = () => {
   );
 
   useEffect(() => {
-    if (!token) {
-      navigate("/auth");
-      return;
-    }
     void refreshAll(true);
-  }, [navigate, refreshAll, token]);
+  }, [refreshAll]);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
     const interval = setInterval(() => {
       void refreshAll();
     }, 5000);
     return () => clearInterval(interval);
-  }, [refreshAll, token]);
+  }, [refreshAll]);
 
   const handleReserve = async (productId: string) => {
-    if (!token) {
-      navigate("/auth");
-      return;
-    }
-
     setPageError(null);
     setReservingProductId(productId);
 
     try {
-      const response = await api.reserve(token, { productId, quantity: 1 });
+      const response = await api.reserve({ productId, quantity: 1 });
       setReservations((prev) => ({
         ...prev,
         [productId]: {
@@ -133,11 +115,6 @@ const Drop = () => {
   };
 
   const handleCheckout = async (productId: string) => {
-    if (!token) {
-      navigate("/auth");
-      return;
-    }
-
     const reservation = reservations[productId];
     if (!reservation) {
       setPageError("No active reservation found for this product");
@@ -147,18 +124,13 @@ const Drop = () => {
     setPageError(null);
     setCheckingOutProductId(productId);
     try {
-      await api.checkout(token, { reservationId: reservation.reservationId });
+      await api.checkout({ reservationId: reservation.reservationId });
       await refreshAll();
     } catch (error) {
       setPageError((error as Error).message);
     } finally {
       setCheckingOutProductId(null);
     }
-  };
-
-  const handleLogout = () => {
-    authStorage.clearToken();
-    navigate("/auth");
   };
 
   return (
@@ -171,11 +143,7 @@ const Drop = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => navigate("/activity")}>
-              My Activity
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Activity
             </Button>
           </div>
         </div>

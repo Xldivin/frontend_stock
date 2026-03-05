@@ -32,7 +32,7 @@ const Index = () => {
         {/* Description */}
         <p className="text-lg text-muted-foreground max-w-md mx-auto">
           Limited edition products. First come, first served.
-          Register, login, view live stock, and reserve in real time.
+          View live stock, reserve items, and checkout in real time.
         </p>
 
         {/* CTA */}
@@ -55,7 +55,7 @@ const Index = () => {
               Secure Reserve
             </h3>
             <p className="text-xs text-muted-foreground">
-              JWT protected flow
+              Public reservation flow
             </p>
           </div>
 
