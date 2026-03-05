@@ -1,4 +1,27 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "http://localhost:4000/api";
+const GUEST_ID_STORAGE_KEY = "stock_drop_guest_id";
+
+const createGuestId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const getGuestId = () => {
+  if (typeof window === "undefined") {
+    return "guest-server";
+  }
+
+  const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
+  if (existing) {
+    return existing;
+  }
+
+  const created = createGuestId();
+  window.localStorage.setItem(GUEST_ID_STORAGE_KEY, created);
+  return created;
+};
 
 export type Product = {
   id: string;
@@ -91,6 +114,7 @@ type ApiErrorPayload = {
 
 const buildHeaders = (): HeadersInit => ({
   "Content-Type": "application/json",
+  "X-Guest-Id": getGuestId(),
 });
 
 const parseApiError = async (response: Response): Promise<string> => {
