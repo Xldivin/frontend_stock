@@ -88,7 +88,7 @@ const Drop = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       void refreshAll();
-    }, 5000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [refreshAll]);
 
